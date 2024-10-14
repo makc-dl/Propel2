@@ -24,6 +24,7 @@ use Propel\Generator\Platform\OraclePlatform;
 use Propel\Generator\Platform\PlatformInterface;
 use Propel\Generator\Platform\SqlsrvPlatform;
 use Propel\Runtime\Exception\PropelException;
+use Propel\Runtime\Propel;
 
 /**
  * Generates a base Object class for user object model (OM).
@@ -6550,10 +6551,28 @@ abstract class " . $this->getUnqualifiedClassName() . $parentClass . ' implement
             $primaryKeyMethodInfo = $platform->getSequenceName($table);
         }
         $query = 'INSERT INTO ' . $this->quoteIdentifier($table->getName()) . ' (%s) VALUES (%s)';
+        $pgSQLReturning = false;
+
         $script = "
         \$modifiedColumns = [];
         \$index = 0;
 ";
+
+
+        if($platform instanceof \Propel\Generator\Platform\PgsqlPlatform && $table->getIdMethod() == IdMethod::NATIVE){
+            $script .= "\$returningColumns = [];
+            ";
+            foreach($table->getColumns() as $column) {
+                if($column->getAttribute('autoIncrement') != null && $column->getAttribute('autoIncrement')){
+                    $pgSQLReturning = true;
+                    $script .= "\$returningColumns[] = '{$column->getName()}';
+                    ";
+                }
+            }
+            if($pgSQLReturning){
+                $query .= ' RETURNING %s';
+            }
+        }
 
         foreach ($table->getPrimaryKey() as $column) {
             if (!$column->isAutoIncrement()) {
@@ -6605,7 +6624,7 @@ abstract class " . $this->getUnqualifiedClassName() . $parentClass . ' implement
             $constantName = $this->getColumnConstant($column);
             $identifier = var_export($this->quoteIdentifier($column->getName()), true);
             $script .= "
-        if (\$this->isColumnModified($constantName)) {
+        if (\$this->isColumnModified($constantName)".($column->isPrimaryKey() ? " && \$this->".$column->getName()." !== null" : "").") {
             \$modifiedColumns[':p' . \$index++]  = $identifier;
         }";
         }
@@ -6616,6 +6635,7 @@ abstract class " . $this->getUnqualifiedClassName() . $parentClass . ' implement
             '$query',
             implode(', ', \$modifiedColumns),
             implode(', ', array_keys(\$modifiedColumns))
+            ".($pgSQLReturning ? ", implode(', ', \$returningColumns)" : "")."
         );
 
         try {
@@ -6666,6 +6686,21 @@ abstract class " . $this->getUnqualifiedClassName() . $parentClass . ' implement
             }
             $script .= "
 ";
+        }
+
+        if($pgSQLReturning){
+            $script .= "
+        \$pgSQLInserted = \$stmt->fetch(\PDO::FETCH_ASSOC);
+            ";
+
+            foreach($table->getColumns() as $column) {
+                if($column->getAttribute('autoIncrement') != null && $column->getAttribute('autoIncrement')){
+                    $script .= "
+        \$this->set" . $column->getPhpName() . "(\$pgSQLInserted['".$column->getName()."']);
+        ";
+
+                }
+            }
         }
 
         return $script;
