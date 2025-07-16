@@ -297,7 +297,7 @@ class PgsqlSchemaParser extends AbstractSchemaParser
             $autoincrement = null;
 
             // if column has a default
-            if ((strlen(trim($default)) > 0)) {
+            if ((strlen(trim("$default")) > 0)) {
                 if (!preg_match('/^nextval\(/', $default)) {
                     $strDefault = preg_replace('/::[\W\D]*/', '', $default);
                 } else {
@@ -562,7 +562,7 @@ class PgsqlSchemaParser extends AbstractSchemaParser
 
                 $indexes[$name]->setTable($table);
                 $indexes[$name]->addColumn([
-                    'name' => $row2['attname'],
+                    'name' => @$row2['attname'],
                 ]);
             }
         }
