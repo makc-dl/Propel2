@@ -64,11 +64,6 @@
         "test:sqlite": "@test -c tests/sqlite.phpunit.xml",
         "test:pgsql": "@test -c tests/pgsql.phpunit.xml"
     },
-    "extra": {
-        "branch-alias": {
-            "dev-master": "2.0-dev"
-        }
-    },
     "config": {
         "process-timeout": 0,
         "allow-plugins": {
