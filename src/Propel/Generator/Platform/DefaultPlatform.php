@@ -501,7 +501,10 @@ DROP TABLE IF EXISTS " . $this->quoteIdentifier($table->getName()) . ";
     {
         $list = [];
         foreach ($columns as $column) {
-            $columnName = $column->getName();
+            if($column != null){
+                $columnName = $column->getName();
+                $list[] = $this->quoteIdentifier($columnName);
+            }
             $list[] = $this->quoteIdentifier($columnName);
         }
 
